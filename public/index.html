@@ -2,67 +2,115 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>💎 Космическая Алмазная Империя</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diamond Free Fire</title>
 <style>
-body { background: radial-gradient(circle,#0f2027,#203a43,#2c5364); color:#fff; font-family:Arial,sans-serif; text-align:center; margin:0;padding:0;}
-button { padding:10px 20px;margin:5px;font-size:1.2em;border-radius:12px;cursor:pointer;}
+body { font-family: Arial, sans-serif; background: #111; color: #eee; text-align: center; }
+button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+input { padding: 5px; }
+#leaderboard { margin-top: 20px; }
+.online { margin-top: 10px; }
 </style>
 </head>
 <body>
-<h1>💎 Космическая Алмазная Империя</h1>
-<input type="text" id="nameInput" placeholder="Введите имя">
-<button onclick="login()">Войти</button>
 
-<div id="game" style="display:none;">
-  <h2 id="level">Уровень: 1</h2>
-  <h2 id="diamonds">Алмазы: 0</h2>
-  <h2 id="ffDiamonds">FF Алмазы: 0</h2>
-  <button onclick="collect()">Собрать ресурсы 💰</button>
-  <h3>Таблица лидеров</h3>
-  <ul id="leaderboard"></ul>
+<h1>Diamond Free Fire</h1>
+
+<div id="loginDiv">
+  <input type="text" id="playerName" placeholder="Введите имя" />
+  <button onclick="login()">Войти</button>
+</div>
+
+<div id="gameDiv" style="display:none;">
+  <h2>Добро пожаловать, <span id="playerDisplay"></span></h2>
+  <p>Алмазы: <span id="diamonds">0</span></p>
+  <p>FF Алмазы: <span id="ffDiamonds">0</span></p>
+  <p>Уровень: <span id="level">1</span></p>
+  <button onclick="collect()">Собрать ресурсы</button>
+
+  <div class="online">
+    <h3>Онлайн игроки (последние 10 мин)</h3>
+    <ul id="onlineList"></ul>
+  </div>
+
+  <div id="leaderboardDiv">
+    <h3>Таблица лидеров</h3>
+    <ol id="leaderboard"></ol>
+  </div>
 </div>
 
 <script>
 let player = null;
 
 async function login() {
-  const name = document.getElementById('nameInput').value.trim();
-  if (!name) return alert('Введите имя!');
+  const name = document.getElementById('playerName').value.trim();
+  if(!name) return alert('Введите имя!');
+  
   const res = await fetch('/login', {
-    method:'POST',
+    method: 'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({name})
   });
-  player = await res.json();
-  document.getElementById('game').style.display='block';
-  updateUI();
+  const data = await res.json();
+  if(res.ok){
+    player = data;
+    document.getElementById('playerDisplay').innerText = player.name;
+    document.getElementById('diamonds').innerText = player.diamonds;
+    document.getElementById('ffDiamonds').innerText = player.ffDiamonds;
+    document.getElementById('level').innerText = player.level;
+    document.getElementById('loginDiv').style.display = 'none';
+    document.getElementById('gameDiv').style.display = 'block';
+    updateLeaderboard();
+    updateOnline();
+  } else {
+    alert(data.error);
+  }
 }
 
 async function collect() {
-  const res = await fetch('/collect',{
+  if(!player) return;
+  const res = await fetch('/collect', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({name: player.name})
   });
-  player = await res.json();
-  updateUI();
+  const data = await res.json();
+  if(res.ok){
+    player = data;
+    document.getElementById('diamonds').innerText = player.diamonds;
+    document.getElementById('ffDiamonds').innerText = player.ffDiamonds;
+    document.getElementById('level').innerText = player.level;
+    updateLeaderboard();
+  } else {
+    alert(data.error);
+  }
 }
 
-async function updateUI() {
-  document.getElementById('level').innerText = 'Уровень: ' + player.level;
-  document.getElementById('diamonds').innerText = 'Алмазы: ' + player.diamonds;
-  document.getElementById('ffDiamonds').innerText = 'FF Алмазы: ' + player.ffDiamonds;
-
-  const lb = await fetch('/leaderboard');
-  const leaders = await lb.json();
+async function updateLeaderboard() {
+  const res = await fetch('/leaderboard');
+  const players = await res.json();
   const list = document.getElementById('leaderboard');
   list.innerHTML = '';
-  leaders.forEach(p => {
+  players.forEach(p=>{
     const li = document.createElement('li');
-    li.innerText = `${p.name} - ${p.diamonds}💎 / ${p.ffDiamonds}FF`;
+    li.innerText = `${p.name} - ${p.diamonds + p.ffDiamonds} алмазов`;
     list.appendChild(li);
   });
 }
+
+async function updateOnline() {
+  const res = await fetch('/online');
+  const online = await res.json();
+  const list = document.getElementById('onlineList');
+  list.innerHTML = '';
+  online.forEach(p=>{
+    const li = document.createElement('li');
+    li.innerText = p.name;
+    list.appendChild(li);
+  });
+  setTimeout(updateOnline, 10000); // обновляем каждые 10 сек
+}
 </script>
+
 </body>
 </html>
