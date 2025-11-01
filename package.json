@@ -1,13 +1,11 @@
 {
   "name": "diamond-freefire",
   "version": "1.0.0",
-  "description": "Онлайн игра с алмазами и админкой",
+  "description": "Free Fire diamond game with admin panel",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "author": "Samir",
-  "license": "ISC",
   "dependencies": {
     "express": "^4.18.2",
     "body-parser": "^1.20.2",
