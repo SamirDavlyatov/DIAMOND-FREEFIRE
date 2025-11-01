@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>💎 Космическая Алмазная Империя</title>
+<style>
+body { background: radial-gradient(circle,#0f2027,#203a43,#2c5364); color:#fff; font-family:Arial,sans-serif; text-align:center; margin:0;padding:0;}
+button { padding:10px 20px;margin:5px;font-size:1.2em;border-radius:12px;cursor:pointer;}
+</style>
+</head>
+<body>
+<h1>💎 Космическая Алмазная Империя</h1>
+<input type="text" id="nameInput" placeholder="Введите имя">
+<button onclick="login()">Войти</button>
+
+<div id="game" style="display:none;">
+  <h2 id="level">Уровень: 1</h2>
+  <h2 id="diamonds">Алмазы: 0</h2>
+  <h2 id="ffDiamonds">FF Алмазы: 0</h2>
+  <button onclick="collect()">Собрать ресурсы 💰</button>
+  <h3>Таблица лидеров</h3>
+  <ul id="leaderboard"></ul>
+</div>
+
+<script>
+let player = null;
+
+async function login() {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) return alert('Введите имя!');
+  const res = await fetch('/login', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name})
+  });
+  player = await res.json();
+  document.getElementById('game').style.display='block';
+  updateUI();
+}
+
+async function collect() {
+  const res = await fetch('/collect',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name: player.name})
+  });
+  player = await res.json();
+  updateUI();
+}
+
+async function updateUI() {
+  document.getElementById('level').innerText = 'Уровень: ' + player.level;
+  document.getElementById('diamonds').innerText = 'Алмазы: ' + player.diamonds;
+  document.getElementById('ffDiamonds').innerText = 'FF Алмазы: ' + player.ffDiamonds;
+
+  const lb = await fetch('/leaderboard');
+  const leaders = await lb.json();
+  const list = document.getElementById('leaderboard');
+  list.innerHTML = '';
+  leaders.forEach(p => {
+    const li = document.createElement('li');
+    li.innerText = `${p.name} - ${p.diamonds}💎 / ${p.ffDiamonds}FF`;
+    list.appendChild(li);
+  });
+}
+</script>
+</body>
+</html>
