@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>👑 Админка</title>
+<style>
+body { background: radial-gradient(circle,#0f2027,#203a43,#2c5364); color:#fff; font-family:Arial,sans-serif; text-align:center; margin:0;padding:0; }
+input,button{padding:6px 10px; margin:5px; border-radius:8px;}
+table{margin:10px auto;border-collapse:collapse;color:#fff;}
+th,td{border:1px solid #fff;padding:5px;}
+</style>
+</head>
+<body>
+
+<h1>👑 Админка</h1>
+
+<input type="password" id="adminPassword" placeholder="Пароль администратора">
+<button id="loginAdminBtn">Войти</button>
+
+<div id="adminPanel" style="display:none;">
+  <h2>Список игроков</h2>
+  <table id="playersTable">
+    <tr><th>Имя</th><th>Алмазы</th><th>FF Алмазы</th><th>Уровень</th><th>Действие</th></tr>
+  </table>
+</div>
+
+<script>
+let adminPassword = null;
+
+document.getElementById('loginAdminBtn').addEventListener('click', async ()=>{
+  const pwd = document.getElementById('adminPassword').value.trim();
+  if(!pwd) return alert('Введите пароль!');
+  adminPassword = pwd;
+  await loadPlayers();
+  document.getElementById('adminPanel').style.display='block';
+});
+
+async function loadPlayers(){
+  const res = await fetch('/leaderboard');
+  const players = await res.json();
+  const table = document.getElementById('playersTable');
+  table.innerHTML='<tr><th>Имя</th><th>Алмазы</th><th>FF Алмазы</th><th>Уровень</th><th>Действие</th></tr>';
+
+  players.forEach(p=>{
+    const row = table.insertRow();
+    row.insertCell(0).innerText = p.name;
+    row.insertCell(1).innerText = p.diamonds;
+    row.insertCell(2).innerText = p.ffDiamonds;
+    row.insertCell(3).innerText = p.level;
+    const actionsCell = row.insertCell(4);
+
+    const btnLevel = document.createElement('button');
+    btnLevel.innerText = '+1000 уровень';
+    btnLevel.onclick = ()=>adminAction('/admin/level', p.name, {level:1000});
+
+    const btnFF10 = document.createElement('button');
+    btnFF10.innerText = '+10 FF';
+    btnFF10.onclick = ()=>adminAction('/admin/ff10', p.name);
+
+    const btnFFTrill = document.createElement('button');
+    btnFFTrill.innerText = '+1 трлн FF';
+    btnFFTrill.onclick = ()=>adminAction('/admin/ffTrill', p.name);
+
+    const btnDiamTrill = document.createElement('button');
+    btnDiamTrill.innerText = '+1 трлн Алмазов';
+    btnDiamTrill.onclick = ()=>adminAction('/admin/diamTrill', p.name);
+
+    actionsCell.appendChild(btnLevel);
+    actionsCell.appendChild(btnFF10);
+    actionsCell.appendChild(btnFFTrill);
+    actionsCell.appendChild(btnDiamTrill);
+  });
+}
+
+async function adminAction(url, playerName, extra={}){
+  const res = await fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({password:adminPassword,name:playerName,...extra})
+  });
+  const data = await res.json();
+  alert(JSON.stringify(data));
+  loadPlayers();
+}
+</script>
+
+</body>
+</html>
