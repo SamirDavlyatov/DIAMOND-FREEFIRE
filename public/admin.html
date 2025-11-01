@@ -1,13 +1,15 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Panel</title>
 <style>
-body { font-family: Arial, sans-serif; background:#222; color:#eee; text-align:center; }
-input, button { padding:5px; margin:5px; }
-#panel { display:none; }
+  body { font-family: Arial, sans-serif; background: #111; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 50px; }
+  input, button { padding: 10px; margin: 5px; border-radius: 5px; border: none; }
+  input { width: 200px; }
+  button { cursor: pointer; background: #0f0; color: #000; font-weight: bold; }
+  .hidden { display: none; }
 </style>
 </head>
 <body>
@@ -15,69 +17,57 @@ input, button { padding:5px; margin:5px; }
 <h1>Admin Panel</h1>
 
 <div id="loginDiv">
-  <input type="password" id="adminPass" placeholder="Введите пароль" />
-  <button onclick="adminLogin()">Войти</button>
+  <input type="password" id="adminPassword" placeholder="Введите пароль" />
+  <button onclick="login()">Войти</button>
+  <p id="loginMsg"></p>
 </div>
 
-<div id="panel">
-  <h2>Управление игроками</h2>
-  <input type="text" id="targetName" placeholder="Имя игрока" />
-  <input type="number" id="targetLevel" placeholder="Уровень" />
-  <button onclick="addLevel()">+ Уровень</button>
-  <button onclick="addFF10()">+10 FF Алмазов</button>
-  <button onclick="addFFTrill()">+1B FF Алмазов</button>
-  <button onclick="addDiamTrill()">+1B Алмазов</button>
-  <button onclick="resetDaily()">Сброс дневного лимита</button>
+<div id="adminActions" class="hidden">
+  <h2>Действия</h2>
+  <input type="text" id="playerName" placeholder="Имя игрока" />
+  <br>
+  <button onclick="addLevel()">Добавить уровень</button>
+  <button onclick="addFF10()">Добавить 10 FF Diamonds</button>
+  <button onclick="addFFTrill()">Добавить триллион FF Diamonds</button>
+  <button onclick="addDiamTrill()">Добавить триллион Diamonds</button>
+  <p id="actionMsg"></p>
 </div>
 
 <script>
-async function adminLogin() {
-  const password = document.getElementById('adminPass').value;
-  const res = await fetch('/admin/login',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({password})
+const baseURL = window.location.origin;
+
+async function login() {
+  const password = document.getElementById('adminPassword').value;
+  const res = await fetch(`${baseURL}/admin/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
   });
   const data = await res.json();
-  if(res.ok) {
-    document.getElementById('loginDiv').style.display='none';
-    document.getElementById('panel').style.display='block';
-  } else alert(data.error);
+  if (data.success) {
+    document.getElementById('loginDiv').classList.add('hidden');
+    document.getElementById('adminActions').classList.remove('hidden');
+  } else {
+    document.getElementById('loginMsg').innerText = data.error || 'Ошибка входа';
+  }
 }
 
-async function addLevel(){
-  const name = document.getElementById('targetName').value;
-  const level = document.getElementById('targetLevel').value || 1;
-  await fetch('/admin/level',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({name, level})
+async function sendAdminAction(route) {
+  const name = document.getElementById('playerName').value;
+  if (!name) { document.getElementById('actionMsg').innerText = 'Введите имя игрока!'; return; }
+  const res = await fetch(`${baseURL}/admin/${route}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
   });
-  alert('Уровень добавлен!');
+  const data = await res.json();
+  document.getElementById('actionMsg').innerText = data.error || 'Действие выполнено!';
 }
 
-async function addFF10(){
-  const name = document.getElementById('targetName').value;
-  await fetch('/admin/ff10',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
-  alert('+10 FF Алмазов добавлено!');
-}
-
-async function addFFTrill(){
-  const name = document.getElementById('targetName').value;
-  await fetch('/admin/ffTrill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
-  alert('+1B FF Алмазов добавлено!');
-}
-
-async function addDiamTrill(){
-  const name = document.getElementById('targetName').value;
-  await fetch('/admin/diamTrill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
-  alert('+1B Алмазов добавлено!');
-}
-
-async function resetDaily(){
-  await fetch('/admin/resetDaily',{method:'POST'});
-  alert('Дневной лимит сброшен для всех игроков!');
-}
+function addLevel() { sendAdminAction('level'); }
+function addFF10() { sendAdminAction('ff10'); }
+function addFFTrill() { sendAdminAction('ffTrill'); }
+function addDiamTrill() { sendAdminAction('diamTrill'); }
 </script>
 
 </body>
