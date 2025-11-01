@@ -25,29 +25,22 @@ function savePlayers() {
   fs.writeJsonSync(PLAYERS_FILE, players, { spaces: 2 });
 }
 
-// ====== Вход игрока ======
+// ====== Маршруты ======
+// Вход игрока
 app.post('/login', (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Введите имя!' });
 
   let player = players.find(p => p.name === name);
   if (!player) {
-    player = { 
-      name, 
-      diamonds: 0, 
-      ffDiamonds: 0, 
-      level: 1, 
-      dailyCollected: 0, 
-      lastDate: new Date().toDateString(),
-      messages: []
-    };
+    player = { name, diamonds: 0, ffDiamonds: 0, level: 1, dailyCollected: 0, lastDate: new Date().toDateString() };
     players.push(player);
     savePlayers();
   }
   res.json(player);
 });
 
-// ====== Сбор ресурсов ======
+// Сбор ресурсов
 app.post('/collect', (req, res) => {
   const { name } = req.body;
   const player = players.find(p => p.name === name);
@@ -70,18 +63,10 @@ app.post('/collect', (req, res) => {
   res.json(player);
 });
 
-// ====== Таблица лидеров ======
+// Таблица лидеров
 app.get('/leaderboard', (req, res) => {
   const sorted = [...players].sort((a, b) => b.diamonds + b.ffDiamonds - (a.diamonds + a.ffDiamonds));
   res.json(sorted);
-});
-
-// ====== Почта для игроков ======
-app.get('/messages/:name', (req, res) => {
-  const { name } = req.params;
-  const player = players.find(p => p.name === name);
-  if (!player) return res.status(404).json({ error: 'Игрок не найден' });
-  res.json(player.messages || []);
 });
 
 // ====== Админ-панель ======
@@ -91,18 +76,14 @@ app.post('/admin/login', (req, res) => {
   res.json({ success: true });
 });
 
-// ====== Админ: изменить баланс и отправить письмо ======
-app.post('/admin/modify', (req, res) => {
-  const { name, diamonds = 0, ffDiamonds = 0, message = '' } = req.body;
+// Установка точного количества алмазов и FF алмазов
+app.post('/admin/set', (req, res) => {
+  const { name, diamonds, ffDiamonds } = req.body;
   const player = players.find(p => p.name === name);
   if (!player) return res.status(404).json({ error: 'Игрок не найден' });
 
-  player.diamonds += Number(diamonds);
-  player.ffDiamonds += Number(ffDiamonds);
-
-  if (message) {
-    player.messages.push({ text: message, date: new Date().toLocaleString() });
-  }
+  if(!isNaN(diamonds)) player.diamonds = diamonds;
+  if(!isNaN(ffDiamonds)) player.ffDiamonds = ffDiamonds;
 
   savePlayers();
   res.json(player);
