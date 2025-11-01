@@ -1,217 +1,99 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Diamond Free Fire</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: radial-gradient(circle at top left, #0b0f2a, #1a1f44);
-      color: #fff;
-    }
-
-    h1 {
-      text-align: center;
-      color: #00ffcc;
-      text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffff;
-    }
-
-    .container {
-      max-width: 1000px;
-      margin: auto;
-      padding: 20px;
-    }
-
-    input[type="text"] {
-      padding: 8px;
-      border-radius: 8px;
-      border: none;
-      margin-right: 10px;
-    }
-
-    button {
-      cursor: pointer;
-      background: linear-gradient(90deg, #ff0066, #ffcc00);
-      border: none;
-      color: #000;
-      font-weight: bold;
-      padding: 10px 20px;
-      margin: 5px;
-      border-radius: 12px;
-      transition: all 0.3s ease;
-      box-shadow: 0 0 10px #ffcc00;
-    }
-
-    button:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 20px #ff00cc;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-
-    th, td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid rgba(255,255,255,0.2);
-    }
-
-    th {
-      background: rgba(255, 255, 255, 0.1);
-      color: #ffdd00;
-    }
-
-    tr:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transition: 0.3s;
-    }
-
-    .online-player {
-      color: #00ffcc;
-      font-weight: bold;
-    }
-
-    #gameSection {
-      display: none;
-      margin-top: 20px;
-    }
-
-    .admin-btn {
-      background: linear-gradient(90deg, #00ffcc, #0066ff);
-      color: #000;
-      font-weight: bold;
-      padding: 10px 15px;
-      border-radius: 10px;
-      margin-top: 15px;
-    }
-
-    .stats {
-      margin-top: 15px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Diamond Free Fire</title>
+<style>
+body {
+  font-family: 'Arial', sans-serif;
+  background: url('https://i.ibb.co/6mQ9T8S/cosmos.jpg') no-repeat center center fixed;
+  background-size: cover;
+  color: #fff;
+  text-align: center;
+}
+button {
+  padding: 10px 20px;
+  margin: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  background: #00f0ff;
+  color: #000;
+}
+#messages {
+  background: rgba(0,0,0,0.5);
+  margin: 10px auto;
+  padding: 10px;
+  width: 300px;
+  border-radius: 5px;
+}
+</style>
 </head>
 <body>
-  <h1>Diamond Free Fire</h1>
-  <div class="container">
-    <div id="loginSection">
-      <input type="text" id="playerName" placeholder="Введите имя">
-      <button onclick="login()">Войти</button>
-    </div>
+<h1>Diamond Free Fire</h1>
+<div>
+  <input type="text" id="playerName" placeholder="Введите имя">
+  <button onclick="login()">Войти</button>
+</div>
+<div id="playerInfo" style="display:none;">
+  <p>Алмазы: <span id="diamonds">0</span></p>
+  <p>FF Алмазы: <span id="ffDiamonds">0</span></p>
+  <p>Уровень: <span id="level">1</span></p>
+  <button onclick="collect()">Собрать ресурсы</button>
+  <button onclick="openAdmin()">Админка</button>
+  <h3>Онлайн игроки</h3>
+  <ul id="leaderboard"></ul>
+  <h3>Почта ✉️</h3>
+  <div id="messages"></div>
+</div>
+<script>
+let currentPlayer = '';
 
-    <div id="gameSection">
-      <h2>Добро пожаловать, <span id="playerDisplay"></span></h2>
-      <div class="stats">
-        Алмазы: <span id="diamonds">0</span><br>
-        FF Алмазы: <span id="ffDiamonds">0</span><br>
-        Уровень: <span id="level">1</span>
-      </div>
+async function login() {
+  const name = document.getElementById('playerName').value;
+  if (!name) return alert('Введите имя');
+  const res = await fetch('/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+  const data = await res.json();
+  currentPlayer = data.name;
+  document.getElementById('playerInfo').style.display='block';
+  updatePlayer(data);
+  loadLeaderboard();
+  loadMessages();
+}
 
-      <button onclick="collect()">Собрать ресурсы</button>
-      <button class="admin-btn" onclick="goAdmin()">Админка</button>
+async function collect() {
+  const res = await fetch('/collect', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: currentPlayer}) });
+  const data = await res.json();
+  if(data.error) alert(data.error);
+  updatePlayer(data);
+  loadLeaderboard();
+}
 
-      <h3>Таблица лидеров:</h3>
-      <table id="leaderboard">
-        <thead>
-          <tr>
-            <th>Имя</th>
-            <th>Алмазы</th>
-            <th>FF Алмазы</th>
-            <th>Уровень</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
+function updatePlayer(data){
+  document.getElementById('diamonds').innerText = data.diamonds;
+  document.getElementById('ffDiamonds').innerText = data.ffDiamonds;
+  document.getElementById('level').innerText = data.level;
+}
 
-  <script>
-    let player = null;
+async function loadLeaderboard(){
+  const res = await fetch('/leaderboard');
+  const list = await res.json();
+  const lb = document.getElementById('leaderboard');
+  lb.innerHTML = '';
+  list.forEach(p => lb.innerHTML += `<li>${p.name}: ${p.diamonds} 💎 | ${p.ffDiamonds} FF💎</li>`);
+}
 
-    async function login() {
-      const nameInput = document.getElementById('playerName');
-      const name = nameInput.value.trim();
-      if(!name) return alert('Введите имя!');
+function openAdmin(){
+  window.location.href = 'admin.html';
+}
 
-      // Сохраняем в localStorage, чтобы не вводить заново
-      localStorage.setItem('playerName', name);
-
-      const res = await fetch('/login', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ name })
-      });
-      player = await res.json();
-      showGame();
-    }
-
-    function showGame() {
-      document.getElementById('loginSection').style.display = 'none';
-      document.getElementById('gameSection').style.display = 'block';
-      document.getElementById('playerDisplay').innerText = player.name;
-      updateStats();
-      loadLeaderboard();
-    }
-
-    async function collect() {
-      const res = await fetch('/collect', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ name: player.name })
-      });
-      const data = await res.json();
-      if(data.error) return alert(data.error);
-      player = data;
-      updateStats();
-      loadLeaderboard();
-    }
-
-    function updateStats() {
-      document.getElementById('diamonds').innerText = player.diamonds;
-      document.getElementById('ffDiamonds').innerText = player.ffDiamonds;
-      document.getElementById('level').innerText = player.level;
-    }
-
-    async function loadLeaderboard() {
-      const res = await fetch('/leaderboard');
-      const allPlayers = await res.json();
-      const tbody = document.querySelector('#leaderboard tbody');
-      tbody.innerHTML = '';
-      allPlayers.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${p.name}</td>
-          <td>${p.diamonds}</td>
-          <td>${p.ffDiamonds}</td>
-          <td>${p.level}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function goAdmin() {
-      window.location.href = '/admin.html';
-    }
-
-    // Если игрок уже есть в localStorage
-    window.onload = async () => {
-      const savedName = localStorage.getItem('playerName');
-      if(savedName) {
-        const res = await fetch('/login', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ name: savedName })
-        });
-        player = await res.json();
-        showGame();
-      }
-    }
-  </script>
+async function loadMessages(){
+  const res = await fetch(`/messages/${currentPlayer}`);
+  const messages = await res.json();
+  const div = document.getElementById('messages');
+  div.innerHTML = messages.map(m=>`<p>${m.date}: ${m.text}</p>`).join('');
+}
+</script>
 </body>
 </html>
