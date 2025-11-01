@@ -25,17 +25,36 @@ function savePlayers() {
   fs.writeJsonSync(PLAYERS_FILE, players, { spaces: 2 });
 }
 
+// ====== Автосохранение каждые 60 секунд ======
+setInterval(savePlayers, 60000);
+
+// ====== Вспомогательные функции ======
+function findPlayer(name) {
+  return players.find(p => p.name === name);
+}
+
 // ====== Маршруты ======
+
 // Вход игрока
 app.post('/login', (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Введите имя!' });
 
-  let player = players.find(p => p.name === name);
+  let player = findPlayer(name);
   if (!player) {
-    player = { name, diamonds: 0, ffDiamonds: 0, level: 1, dailyCollected: 0, lastDate: new Date().toDateString() };
+    player = { 
+      name, 
+      diamonds: 0, 
+      ffDiamonds: 0, 
+      level: 1, 
+      dailyCollected: 0, 
+      lastDate: new Date().toDateString(), 
+      lastLogin: Date.now() 
+    };
     players.push(player);
     savePlayers();
+  } else {
+    player.lastLogin = Date.now();
   }
   res.json(player);
 });
@@ -43,7 +62,7 @@ app.post('/login', (req, res) => {
 // Сбор ресурсов
 app.post('/collect', (req, res) => {
   const { name } = req.body;
-  const player = players.find(p => p.name === name);
+  const player = findPlayer(name);
   if (!player) return res.status(404).json({ error: 'Игрок не найден' });
 
   const today = new Date().toDateString();
@@ -53,7 +72,8 @@ app.post('/collect', (req, res) => {
   }
 
   const dailyLimit = 20000;
-  if (player.dailyCollected >= dailyLimit) return res.status(400).json({ error: 'Лимит достигнут!' });
+  if (player.dailyCollected >= dailyLimit) 
+    return res.status(400).json({ error: 'Лимит достигнут!' });
 
   const gain = Math.floor(Math.random() * 5) + 1;
   player.diamonds += gain;
@@ -78,7 +98,7 @@ app.post('/admin/login', (req, res) => {
 
 app.post('/admin/level', (req, res) => {
   const { name, level } = req.body;
-  const player = players.find(p => p.name === name);
+  const player = findPlayer(name);
   if (!player) return res.status(404).json({ error: 'Игрок не найден' });
   player.level += Number(level || 1);
   savePlayers();
@@ -87,7 +107,7 @@ app.post('/admin/level', (req, res) => {
 
 app.post('/admin/ff10', (req, res) => {
   const { name } = req.body;
-  const player = players.find(p => p.name === name);
+  const player = findPlayer(name);
   if (!player) return res.status(404).json({ error: 'Игрок не найден' });
   player.ffDiamonds += 10;
   savePlayers();
@@ -96,7 +116,7 @@ app.post('/admin/ff10', (req, res) => {
 
 app.post('/admin/ffTrill', (req, res) => {
   const { name } = req.body;
-  const player = players.find(p => p.name === name);
+  const player = findPlayer(name);
   if (!player) return res.status(404).json({ error: 'Игрок не найден' });
   player.ffDiamonds += 1_000_000_000;
   savePlayers();
@@ -105,11 +125,25 @@ app.post('/admin/ffTrill', (req, res) => {
 
 app.post('/admin/diamTrill', (req, res) => {
   const { name } = req.body;
-  const player = players.find(p => p.name === name);
+  const player = findPlayer(name);
   if (!player) return res.status(404).json({ error: 'Игрок не найден' });
   player.diamonds += 1_000_000_000;
   savePlayers();
   res.json(player);
+});
+
+// Сброс дневного лимита для всех игроков
+app.post('/admin/resetDaily', (req, res) => {
+  players.forEach(p => { p.dailyCollected = 0; });
+  savePlayers();
+  res.json({ success: true });
+});
+
+// Онлайн игроки (за последние 10 минут)
+app.get('/online', (req, res) => {
+  const tenMinutes = 10 * 60 * 1000;
+  const onlinePlayers = players.filter(p => Date.now() - p.lastLogin < tenMinutes);
+  res.json(onlinePlayers);
 });
 
 // ====== Запуск сервера ======
