@@ -25,7 +25,7 @@ function savePlayers() {
   fs.writeJsonSync(PLAYERS_FILE, players, { spaces: 2 });
 }
 
-// ====== Игроки ======
+// ====== Маршруты ======
 // Вход игрока
 app.post('/login', (req, res) => {
   const { name } = req.body;
@@ -110,6 +110,30 @@ app.post('/admin/diamTrill', (req, res) => {
   player.diamonds += 1_000_000_000;
   savePlayers();
   res.json(player);
+});
+
+// ====== Обмен алмазов на FF алмазы ======
+app.post('/exchange', (req, res) => {
+  const { name, amount } = req.body; // amount — сколько FF алмазов хочет получить
+  const player = players.find(p => p.name === name);
+  if (!player) return res.status(404).json({ error: 'Игрок не найден' });
+
+  const costPerFF = 1500; // 1 FF алмаз = 1500 обычных
+  const totalCost = amount * costPerFF;
+
+  if (player.diamonds < totalCost) {
+    return res.status(400).json({ error: 'Недостаточно обычных алмазов!' });
+  }
+
+  player.diamonds -= totalCost;
+  player.ffDiamonds += amount;
+
+  savePlayers();
+  res.json({
+    success: true,
+    diamonds: player.diamonds,
+    ffDiamonds: player.ffDiamonds
+  });
 });
 
 // ====== Запуск сервера ======
