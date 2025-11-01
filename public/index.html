@@ -2,86 +2,122 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Diamond Free Fire</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
 <style>
   body {
-    margin: 0;
-    font-family: 'Orbitron', sans-serif;
-    background: url('https://i.imgur.com/X0Q0xLJ.jpg') no-repeat center center fixed;
-    background-size: cover;
+    background: radial-gradient(circle, #0d0d1a, #000);
     color: #fff;
+    font-family: 'Orbitron', sans-serif;
     text-align: center;
+    padding: 20px;
   }
-  h1 { font-size: 3em; margin-top: 20px; color: #00ffff; }
-  .stats, .actions, .leaderboard { margin: 20px auto; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 15px; width: 90%; max-width: 600px; }
-  button { background: #0ff; border: none; padding: 10px 20px; font-size: 1em; margin: 10px; border-radius: 10px; cursor: pointer; }
-  button:hover { background: #00c; color: #fff; }
-  #adminBtn { background: #ff0; color: #000; }
-  input { padding: 8px; border-radius: 8px; border: none; margin: 5px; width: 200px; text-align: center; }
+
+  button {
+    background: linear-gradient(90deg, #ff0099, #493240);
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    color: white;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  button:hover {
+    transform: scale(1.1);
+  }
+
+  input {
+    padding: 5px;
+    border-radius: 5px;
+    border: none;
+    margin: 5px;
+  }
 </style>
 </head>
 <body>
-<h1>Diamond Free Fire</h1>
+  <h1>Diamond Free Fire</h1>
 
-<div class="stats">
-  <div>Имя: <span id="playerName"></span></div>
-  <div>Алмазы: <span id="diamonds">0</span></div>
-  <div>FF Алмазы: <span id="ffDiamonds">0</span></div>
-  <div>Уровень: <span id="level">1</span></div>
-</div>
+  <input id="playerName" placeholder="Введите имя" />
+  <button onclick="login()">Войти</button>
+  <button onclick="collect()">Собрать ресурсы</button>
 
-<div class="actions">
-  <button onclick="collectDiamonds()">Собрать ресурсы</button>
-  <button id="adminBtn" onclick="openAdmin()">Админ панель</button>
-</div>
+  <div>
+    <p>Алмазы: <span id="diamonds">0</span></p>
+    <p>FF Алмазы: <span id="ffDiamonds">0</span></p>
+  </div>
 
-<div class="leaderboard">
-  <h2>Топ игроков</h2>
+  <input id="exchangeAmount" type="number" placeholder="Количество FF алмазов">
+  <button onclick="exchange()">Обменять</button>
+
+  <h2>Таблица лидеров</h2>
   <ul id="leaderboard"></ul>
-</div>
 
 <script>
-let playerName = localStorage.getItem('playerName') || prompt("Введите имя");
-if(!playerName) playerName = "Игрок";
-localStorage.setItem('playerName', playerName);
+let currentPlayer = null;
 
-document.getElementById('playerName').innerText = playerName;
-
-async function updateStats() {
-  const res = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: playerName })});
-  const data = await res.json();
-  document.getElementById('diamonds').innerText = data.diamonds;
-  document.getElementById('ffDiamonds').innerText = data.ffDiamonds;
-  document.getElementById('level').innerText = data.level;
-  updateLeaderboard();
+function login() {
+  const name = document.getElementById('playerName').value;
+  fetch('/login', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name})
+  }).then(res => res.json())
+    .then(player => {
+      currentPlayer = player;
+      updateStats();
+      loadLeaderboard();
+    });
 }
 
-async function collectDiamonds() {
-  const res = await fetch('/collect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: playerName })});
-  const data = await res.json();
-  if(data.error) { alert(data.error); return; }
-  updateStats();
+function collect() {
+  if (!currentPlayer) return alert('Сначала войдите!');
+  fetch('/collect', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:currentPlayer.name})
+  }).then(res=>res.json())
+    .then(player=>{currentPlayer = player; updateStats(); loadLeaderboard();});
 }
 
-async function updateLeaderboard() {
-  const res = await fetch('/leaderboard');
-  const list = await res.json();
-  const ul = document.getElementById('leaderboard');
-  ul.innerHTML = '';
-  list.slice(0,10).forEach(p => {
-    const li = document.createElement('li');
-    li.textContent = `${p.name} - ${p.diamonds} + ${p.ffDiamonds}`;
-    ul.appendChild(li);
-  });
+function exchange() {
+  if (!currentPlayer) return alert('Сначала войдите!');
+  const amount = Number(document.getElementById('exchangeAmount').value);
+  if (!amount) return alert('Введите количество FF алмазов');
+
+  fetch('/exchange', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name: currentPlayer.name, amount})
+  }).then(res=>res.json())
+    .then(data=>{
+      if(data.success){
+        currentPlayer.diamonds = data.diamonds;
+        currentPlayer.ffDiamonds = data.ffDiamonds;
+        updateStats();
+        loadLeaderboard();
+      } else alert(data.error);
+    });
 }
 
-function openAdmin() {
-  window.location.href = 'admin.html';
+function updateStats(){
+  document.getElementById('diamonds').innerText = currentPlayer.diamonds;
+  document.getElementById('ffDiamonds').innerText = currentPlayer.ffDiamonds;
 }
 
-updateStats();
+function loadLeaderboard(){
+  fetch('/leaderboard').then(res=>res.json())
+    .then(list=>{
+      const lb = document.getElementById('leaderboard');
+      lb.innerHTML = '';
+      list.forEach(p=>{
+        const li = document.createElement('li');
+        li.innerText = `${p.name}: ${p.diamonds} 💎, ${p.ffDiamonds} FF`;
+        lb.appendChild(li);
+      });
+    });
+}
 </script>
 </body>
 </html>
