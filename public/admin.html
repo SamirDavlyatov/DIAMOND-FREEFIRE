@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>👑 Админка 💎</title>
+</head>
+<body>
+<h1>Админ-панель</h1>
+<input type="password" id="adminPass" placeholder="Введите пароль">
+<button onclick="loginAdmin()">Войти</button>
+
+<div id="panel" style="display:none;">
+  <input type="text" id="playerName" placeholder="Имя игрока">
+  <button onclick="giveLevel()">+ Уровень</button>
+  <button onclick="giveFF10()">+10 FF</button>
+  <button onclick="giveFFTrill()">+1 млрд FF</button>
+  <button onclick="giveDiamTrill()">+1 млрд Алмазов</button>
+</div>
+
+<script>
+async function loginAdmin() {
+  const pass = document.getElementById('adminPass').value;
+  const res = await fetch('/admin/login', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({password:pass})
+  });
+  const data = await res.json();
+  if(data.success) {
+    document.getElementById('panel').style.display='block';
+    alert('Вход успешен!');
+  } else alert('Неверный пароль!');
+}
+
+async function giveLevel() { await sendAdmin('/admin/level'); }
+async function giveFF10() { await sendAdmin('/admin/ff10'); }
+async function giveFFTrill() { await sendAdmin('/admin/ffTrill'); }
+async function giveDiamTrill() { await sendAdmin('/admin/diamTrill'); }
+
+async function sendAdmin(route) {
+  const name = document.getElementById('playerName').value.trim();
+  if(!name) return alert('Введите имя игрока!');
+  const res = await fetch(route,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, level:1})
+  });
+  const data = await res.json();
+  alert('Успешно: ' + JSON.stringify(data));
+}
+</script>
+</body>
+</html>
