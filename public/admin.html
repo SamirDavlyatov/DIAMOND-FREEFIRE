@@ -5,70 +5,94 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Panel</title>
 <style>
-  body { font-family: Arial, sans-serif; background: #111; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 50px; }
-  input, button { padding: 10px; margin: 5px; border-radius: 5px; border: none; }
-  input { width: 200px; }
-  button { cursor: pointer; background: #0f0; color: #000; font-weight: bold; }
-  .hidden { display: none; }
+body { font-family: Arial; background: #111; color: #fff; }
+input, button { padding: 5px; margin: 5px; }
+table { border-collapse: collapse; width: 100%; }
+td, th { border: 1px solid #fff; padding: 5px; text-align: left; }
 </style>
 </head>
 <body>
-
 <h1>Admin Panel</h1>
 
 <div id="loginDiv">
-  <input type="password" id="adminPassword" placeholder="Введите пароль" />
-  <button onclick="login()">Войти</button>
+  <h3>Login</h3>
+  Name: <input type="text" id="adminName"><br>
+  Password: <input type="password" id="adminPassword"><br>
+  <button onclick="loginAdmin()">Login</button>
   <p id="loginMsg"></p>
 </div>
 
-<div id="adminActions" class="hidden">
-  <h2>Действия</h2>
-  <input type="text" id="playerName" placeholder="Имя игрока" />
-  <br>
-  <button onclick="addLevel()">Добавить уровень</button>
-  <button onclick="addFF10()">Добавить 10 FF Diamonds</button>
-  <button onclick="addFFTrill()">Добавить триллион FF Diamonds</button>
-  <button onclick="addDiamTrill()">Добавить триллион Diamonds</button>
-  <p id="actionMsg"></p>
+<div id="panelDiv" style="display:none;">
+  <h3>Online Admins:</h3>
+  <ul id="onlineAdmins"></ul>
+
+  <h3>Players:</h3>
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Diamonds</th><th>FF Diamonds</th><th>Level</th></tr>
+    </thead>
+    <tbody id="playersTable"></tbody>
+  </table>
+
+  <button onclick="logoutAdmin()">Logout</button>
 </div>
 
 <script>
-const baseURL = window.location.origin;
+let adminName = '';
 
-async function login() {
+async function loginAdmin() {
+  adminName = document.getElementById('adminName').value;
   const password = document.getElementById('adminPassword').value;
-  const res = await fetch(`${baseURL}/admin/login`, {
+  const res = await fetch('/admin/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password })
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name: adminName, password})
   });
   const data = await res.json();
-  if (data.success) {
-    document.getElementById('loginDiv').classList.add('hidden');
-    document.getElementById('adminActions').classList.remove('hidden');
+  if(data.success){
+    document.getElementById('loginDiv').style.display = 'none';
+    document.getElementById('panelDiv').style.display = 'block';
+    fetchOnline();
+    fetchPlayers();
+    setInterval(fetchPlayers, 5000);
+    setInterval(fetchOnline, 5000);
   } else {
-    document.getElementById('loginMsg').innerText = data.error || 'Ошибка входа';
+    document.getElementById('loginMsg').innerText = data.error || 'Error';
   }
 }
 
-async function sendAdminAction(route) {
-  const name = document.getElementById('playerName').value;
-  if (!name) { document.getElementById('actionMsg').innerText = 'Введите имя игрока!'; return; }
-  const res = await fetch(`${baseURL}/admin/${route}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name })
+async function fetchPlayers() {
+  const res = await fetch('/players/online');
+  const players = await res.json();
+  const tbody = document.getElementById('playersTable');
+  tbody.innerHTML = '';
+  players.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.name}</td><td>${p.diamonds}</td><td>${p.ffDiamonds}</td><td>${p.level}</td>`;
+    tbody.appendChild(tr);
   });
-  const data = await res.json();
-  document.getElementById('actionMsg').innerText = data.error || 'Действие выполнено!';
 }
 
-function addLevel() { sendAdminAction('level'); }
-function addFF10() { sendAdminAction('ff10'); }
-function addFFTrill() { sendAdminAction('ffTrill'); }
-function addDiamTrill() { sendAdminAction('diamTrill'); }
-</script>
+async function fetchOnline() {
+  const res = await fetch('/admin/online');
+  const data = await res.json();
+  const ul = document.getElementById('onlineAdmins');
+  ul.innerHTML = '';
+  data.onlineAdmins.forEach(a => {
+    const li = document.createElement('li');
+    li.innerText = a;
+    ul.appendChild(li);
+  });
+}
 
+async function logoutAdmin() {
+  await fetch('/admin/logout', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name: adminName})
+  });
+  location.reload();
+}
+</script>
 </body>
 </html>
