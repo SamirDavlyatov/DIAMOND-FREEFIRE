@@ -26,7 +26,18 @@ function savePlayers() {
 }
 
 // ====== Маршруты ======
-// Вход игрока
+
+// Главная страница
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Админка
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// API: Вход игрока
 app.post('/login', (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Введите имя!' });
@@ -40,7 +51,7 @@ app.post('/login', (req, res) => {
   res.json(player);
 });
 
-// Сбор ресурсов
+// API: Сбор ресурсов
 app.post('/collect', (req, res) => {
   const { name } = req.body;
   const player = players.find(p => p.name === name);
@@ -63,13 +74,13 @@ app.post('/collect', (req, res) => {
   res.json(player);
 });
 
-// Таблица лидеров
+// API: Таблица лидеров
 app.get('/leaderboard', (req, res) => {
   const sorted = [...players].sort((a, b) => b.diamonds + b.ffDiamonds - (a.diamonds + a.ffDiamonds));
   res.json(sorted);
 });
 
-// ====== Админ-панель ======
+// ====== Админ-панель API ======
 app.post('/admin/login', (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Неверный пароль!' });
