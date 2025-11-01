@@ -2,52 +2,83 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>👑 Админка 💎</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel</title>
+<style>
+body { font-family: Arial, sans-serif; background:#222; color:#eee; text-align:center; }
+input, button { padding:5px; margin:5px; }
+#panel { display:none; }
+</style>
 </head>
 <body>
-<h1>Админ-панель</h1>
-<input type="password" id="adminPass" placeholder="Введите пароль">
-<button onclick="loginAdmin()">Войти</button>
 
-<div id="panel" style="display:none;">
-  <input type="text" id="playerName" placeholder="Имя игрока">
-  <button onclick="giveLevel()">+ Уровень</button>
-  <button onclick="giveFF10()">+10 FF</button>
-  <button onclick="giveFFTrill()">+1 млрд FF</button>
-  <button onclick="giveDiamTrill()">+1 млрд Алмазов</button>
+<h1>Admin Panel</h1>
+
+<div id="loginDiv">
+  <input type="password" id="adminPass" placeholder="Введите пароль" />
+  <button onclick="adminLogin()">Войти</button>
+</div>
+
+<div id="panel">
+  <h2>Управление игроками</h2>
+  <input type="text" id="targetName" placeholder="Имя игрока" />
+  <input type="number" id="targetLevel" placeholder="Уровень" />
+  <button onclick="addLevel()">+ Уровень</button>
+  <button onclick="addFF10()">+10 FF Алмазов</button>
+  <button onclick="addFFTrill()">+1B FF Алмазов</button>
+  <button onclick="addDiamTrill()">+1B Алмазов</button>
+  <button onclick="resetDaily()">Сброс дневного лимита</button>
 </div>
 
 <script>
-async function loginAdmin() {
-  const pass = document.getElementById('adminPass').value;
-  const res = await fetch('/admin/login', {
+async function adminLogin() {
+  const password = document.getElementById('adminPass').value;
+  const res = await fetch('/admin/login',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({password:pass})
+    body:JSON.stringify({password})
   });
   const data = await res.json();
-  if(data.success) {
+  if(res.ok) {
+    document.getElementById('loginDiv').style.display='none';
     document.getElementById('panel').style.display='block';
-    alert('Вход успешен!');
-  } else alert('Неверный пароль!');
+  } else alert(data.error);
 }
 
-async function giveLevel() { await sendAdmin('/admin/level'); }
-async function giveFF10() { await sendAdmin('/admin/ff10'); }
-async function giveFFTrill() { await sendAdmin('/admin/ffTrill'); }
-async function giveDiamTrill() { await sendAdmin('/admin/diamTrill'); }
-
-async function sendAdmin(route) {
-  const name = document.getElementById('playerName').value.trim();
-  if(!name) return alert('Введите имя игрока!');
-  const res = await fetch(route,{
+async function addLevel(){
+  const name = document.getElementById('targetName').value;
+  const level = document.getElementById('targetLevel').value || 1;
+  await fetch('/admin/level',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({name, level:1})
+    body:JSON.stringify({name, level})
   });
-  const data = await res.json();
-  alert('Успешно: ' + JSON.stringify(data));
+  alert('Уровень добавлен!');
+}
+
+async function addFF10(){
+  const name = document.getElementById('targetName').value;
+  await fetch('/admin/ff10',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+  alert('+10 FF Алмазов добавлено!');
+}
+
+async function addFFTrill(){
+  const name = document.getElementById('targetName').value;
+  await fetch('/admin/ffTrill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+  alert('+1B FF Алмазов добавлено!');
+}
+
+async function addDiamTrill(){
+  const name = document.getElementById('targetName').value;
+  await fetch('/admin/diamTrill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+  alert('+1B Алмазов добавлено!');
+}
+
+async function resetDaily(){
+  await fetch('/admin/resetDaily',{method:'POST'});
+  alert('Дневной лимит сброшен для всех игроков!');
 }
 </script>
+
 </body>
 </html>
