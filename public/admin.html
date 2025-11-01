@@ -1,196 +1,145 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Panel</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<title>Админ-панель</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
 <style>
   body {
-    margin: 0;
-    font-family: 'Roboto', sans-serif;
-    background: linear-gradient(135deg, #1e1e2f, #0f0f1a);
+    margin:0;
+    font-family: 'Orbitron', sans-serif;
+    background: url('https://i.imgur.com/X0Q0xLJ.jpg') no-repeat center center fixed;
+    background-size: cover;
     color: #fff;
-  }
-  header {
-    background-color: #0d0d1a;
-    padding: 15px 20px;
     text-align: center;
-    font-size: 1.8em;
-    font-weight: 700;
-    letter-spacing: 1px;
-    color: #00ffd5;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  }
+  h1 {
+    font-size: 3em;
+    color: #ff0;
+    margin-top: 20px;
   }
   .container {
+    background: rgba(0,0,0,0.6);
+    border-radius: 15px;
     padding: 20px;
-    max-width: 1000px;
-    margin: 0 auto;
+    width: 90%;
+    max-width: 700px;
+    margin: 20px auto;
   }
   input, button {
     padding: 10px;
-    margin: 5px 0;
-    border-radius: 5px;
+    margin: 5px;
+    border-radius: 8px;
     border: none;
-    outline: none;
     font-size: 1em;
   }
-  input {
-    width: 200px;
-  }
   button {
-    background: #00ffd5;
-    color: #000;
     cursor: pointer;
-    font-weight: bold;
-    transition: 0.3s;
+    background: #0ff;
+    color:#000;
   }
   button:hover {
-    background: #00bba0;
+    background: #00c;
+    color: #fff;
   }
-  #loginDiv {
-    max-width: 400px;
-    margin: 50px auto;
-    padding: 20px;
-    background: #111122;
-    border-radius: 10px;
-    box-shadow: 0 0 20px #00ffd5;
-  }
-  #panelDiv {
-    display: none;
-  }
-  h2 {
-    color: #00ffd5;
-    margin-bottom: 10px;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-  }
-  th, td {
-    padding: 10px;
-    border: 1px solid #00ffd5;
-    text-align: left;
-  }
-  th {
-    background: #0d0d1a;
-  }
-  ul {
-    list-style: none;
-    padding: 0;
-  }
-  ul li {
-    background: #111122;
-    margin: 5px 0;
-    padding: 8px 12px;
-    border-radius: 5px;
-  }
-  .flex {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-  }
-  .flex div {
-    flex: 1;
-    min-width: 300px;
-  }
+  .hidden { display: none; }
+  h2 { color: #0ff; }
 </style>
 </head>
 <body>
-<header>🔥 Diamond FreeFire Admin Panel 🔥</header>
+<h1>Админ-панель</h1>
 
-<div class="container">
+<div class="container" id="loginContainer">
+  <input type="password" id="adminPassword" placeholder="Пароль">
+  <button onclick="loginAdmin()">Войти</button>
+</div>
 
-  <!-- Login -->
-  <div id="loginDiv">
-    <h2>Admin Login</h2>
-    <label>Name:</label><br>
-    <input type="text" id="adminName" placeholder="Your name"><br>
-    <label>Password:</label><br>
-    <input type="password" id="adminPassword" placeholder="Password"><br>
-    <button onclick="loginAdmin()">Login</button>
-    <p id="loginMsg"></p>
-  </div>
+<div class="container hidden" id="adminControls">
+  <h2>Управление игроками</h2>
+  <input type="text" id="targetPlayer" placeholder="Имя игрока">
+  <input type="number" id="addLevel" placeholder="Добавить уровень">
+  <button onclick="addLevel()">+ Уровень</button>
+  <br>
+  <button onclick="addDiamonds()">+ Алмазы</button>
+  <button onclick="addFFDiamonds()">+ FF Алмазы</button>
 
-  <!-- Admin Panel -->
-  <div id="panelDiv">
-    <div class="flex">
-      <div>
-        <h2>Online Admins</h2>
-        <ul id="onlineAdmins"></ul>
-      </div>
-      <div>
-        <h2>Players Online</h2>
-        <table>
-          <thead>
-            <tr><th>Name</th><th>Diamonds</th><th>FF Diamonds</th><th>Level</th></tr>
-          </thead>
-          <tbody id="playersTable"></tbody>
-        </table>
-      </div>
-    </div>
-    <button onclick="logoutAdmin()">Logout</button>
-  </div>
-
+  <h2>Онлайн игроки (последние 10 мин)</h2>
+  <ul id="onlinePlayers"></ul>
 </div>
 
 <script>
-let adminName = '';
+let isAdmin = false;
 
 async function loginAdmin() {
-  adminName = document.getElementById('adminName').value;
   const password = document.getElementById('adminPassword').value;
   const res = await fetch('/admin/login', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({name: adminName, password})
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ password })
   });
   const data = await res.json();
   if(data.success){
-    document.getElementById('loginDiv').style.display = 'none';
-    document.getElementById('panelDiv').style.display = 'block';
-    fetchOnlineAdmins();
-    fetchPlayers();
-    setInterval(fetchPlayers, 5000);
-    setInterval(fetchOnlineAdmins, 5000);
+    isAdmin = true;
+    document.getElementById('loginContainer').classList.add('hidden');
+    document.getElementById('adminControls').classList.remove('hidden');
+    loadOnlinePlayers();
   } else {
-    document.getElementById('loginMsg').innerText = data.error || 'Error';
+    alert('Неверный пароль!');
   }
 }
 
-async function fetchPlayers() {
-  const res = await fetch('/players/online');
-  const players = await res.json();
-  const tbody = document.getElementById('playersTable');
-  tbody.innerHTML = '';
-  players.forEach(p => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${p.name}</td><td>${p.diamonds}</td><td>${p.ffDiamonds}</td><td>${p.level}</td>`;
-    tbody.appendChild(tr);
+async function addLevel() {
+  const name = document.getElementById('targetPlayer').value;
+  const level = document.getElementById('addLevel').value || 1;
+  const res = await fetch('/admin/level', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name, level })
   });
+  const data = await res.json();
+  if(data.error) alert(data.error);
+  else alert(`${name} теперь уровень ${data.level}`);
 }
 
-async function fetchOnlineAdmins() {
-  const res = await fetch('/admin/online');
+async function addDiamonds() {
+  const name = document.getElementById('targetPlayer').value;
+  const res = await fetch('/admin/diamTrill', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name })
+  });
   const data = await res.json();
-  const ul = document.getElementById('onlineAdmins');
+  if(data.error) alert(data.error);
+  else alert(`${name} получил алмазы!`);
+}
+
+async function addFFDiamonds() {
+  const name = document.getElementById('targetPlayer').value;
+  const res = await fetch('/admin/ffTrill', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name })
+  });
+  const data = await res.json();
+  if(data.error) alert(data.error);
+  else alert(`${name} получил FF алмазы!`);
+}
+
+async function loadOnlinePlayers() {
+  const res = await fetch('/leaderboard');
+  const list = await res.json();
+  const ul = document.getElementById('onlinePlayers');
   ul.innerHTML = '';
-  data.onlineAdmins.forEach(a => {
+  list.slice(0,10).forEach(p => {
     const li = document.createElement('li');
-    li.innerText = a;
+    li.textContent = `${p.name} - Алмазы: ${p.diamonds} | FF: ${p.ffDiamonds} | Уровень: ${p.level}`;
     ul.appendChild(li);
   });
 }
 
-async function logoutAdmin() {
-  await fetch('/admin/logout', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({name: adminName})
-  });
-  location.reload();
-}
+// Автообновление онлайн игроков каждые 10 секунд
+setInterval(() => { if(isAdmin) loadOnlinePlayers(); }, 10000);
 </script>
 </body>
 </html>
