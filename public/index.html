@@ -2,97 +2,196 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Diamond Free Fire</title>
 <style>
-body {
-  font-family: 'Arial', sans-serif;
-  background: url('https://i.ibb.co/6mQ9T8S/cosmos.jpg') no-repeat center center fixed;
-  background-size: cover;
-  color: #fff;
-  text-align: center;
-}
-button {
-  padding: 10px 20px;
-  margin: 10px;
-  font-size: 16px;
-  cursor: pointer;
-  border: none;
-  border-radius: 5px;
-  background: #00f0ff;
-  color: #000;
-}
-#messages {
-  background: rgba(0,0,0,0.5);
-  margin: 10px auto;
-  padding: 10px;
-  width: 300px;
-  border-radius: 5px;
-}
+  body {
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background: radial-gradient(ellipse at center, #000 0%, #111 100%);
+    color: #fff;
+  }
+  .container { padding: 20px; max-width: 900px; margin: auto; }
+  h1,h2,h3 { text-align: center; color: #0ff; }
+  button {
+    background: linear-gradient(45deg,#0ff,#00f);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 8px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px #0ff;
+  }
+  input { padding: 8px; border-radius: 5px; border: none; margin-right: 5px; }
+  table {
+    width: 100%; border-collapse: collapse; margin-top: 20px;
+  }
+  th, td {
+    border: 1px solid #0ff; padding: 8px; text-align: center;
+  }
+  th { background-color: #111; }
+  .message {
+    background: #111; padding: 10px; margin: 5px 0; border-radius: 5px;
+  }
 </style>
 </head>
 <body>
-<h1>Diamond Free Fire</h1>
-<div>
-  <input type="text" id="playerName" placeholder="Введите имя">
-  <button onclick="login()">Войти</button>
-</div>
-<div id="playerInfo" style="display:none;">
-  <p>Алмазы: <span id="diamonds">0</span></p>
-  <p>FF Алмазы: <span id="ffDiamonds">0</span></p>
-  <p>Уровень: <span id="level">1</span></p>
-  <button onclick="collect()">Собрать ресурсы</button>
-  <button onclick="openAdmin()">Админка</button>
-  <h3>Онлайн игроки</h3>
-  <ul id="leaderboard"></ul>
-  <h3>Почта ✉️</h3>
-  <div id="messages"></div>
-</div>
-<script>
-let currentPlayer = '';
+<div class="container">
+  <h1>Diamond Free Fire</h1>
 
-async function login() {
-  const name = document.getElementById('playerName').value;
-  if (!name) return alert('Введите имя');
-  const res = await fetch('/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+  <div id="loginDiv">
+    <input type="text" id="playerName" placeholder="Введите имя">
+    <button onclick="login()">Войти</button>
+  </div>
+
+  <div id="playerDiv" style="display:none;">
+    <h2 id="welcome"></h2>
+    <p>Алмазы: <span id="diamonds">0</span> | FF Алмазы: <span id="ffDiamonds">0</span> | Уровень: <span id="level">1</span></p>
+    
+    <button onclick="collect()">Собрать ресурсы</button>
+
+    <h3>Обмен алмазов на FF алмазы</h3>
+    <input type="number" id="exchangeAmount" placeholder="Введите количество FF💎">
+    <button onclick="exchange()">Обменять</button>
+    <p id="exchangeResult"></p>
+
+    <h3>Онлайн игроки (последние 10 мин)</h3>
+    <ul id="onlinePlayers"></ul>
+
+    <h3>Таблица лидеров</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Игрок</th><th>Алмазы</th><th>FF Алмазы</th><th>Уровень</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard"></tbody>
+    </table>
+
+    <h3>Почта</h3>
+    <div id="messages"></div>
+
+    <button onclick="goAdmin()">Перейти в админку</button>
+  </div>
+</div>
+
+<script>
+let currentPlayer = localStorage.getItem('playerName') || '';
+
+if(currentPlayer) login();
+
+async function login(){
+  const nameInput = document.getElementById('playerName');
+  const name = nameInput.value || currentPlayer;
+  if(!name) return alert('Введите имя!');
+
+  const res = await fetch('/login', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name})
+  });
   const data = await res.json();
-  currentPlayer = data.name;
-  document.getElementById('playerInfo').style.display='block';
+  currentPlayer = name;
+  localStorage.setItem('playerName', name);
+
+  document.getElementById('loginDiv').style.display = 'none';
+  document.getElementById('playerDiv').style.display = 'block';
+  nameInput.value = '';
   updatePlayer(data);
   loadLeaderboard();
   loadMessages();
-}
-
-async function collect() {
-  const res = await fetch('/collect', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: currentPlayer}) });
-  const data = await res.json();
-  if(data.error) alert(data.error);
-  updatePlayer(data);
-  loadLeaderboard();
+  loadOnline();
 }
 
 function updatePlayer(data){
+  document.getElementById('welcome').innerText = `Добро пожаловать, ${data.name}`;
   document.getElementById('diamonds').innerText = data.diamonds;
   document.getElementById('ffDiamonds').innerText = data.ffDiamonds;
   document.getElementById('level').innerText = data.level;
 }
 
-async function loadLeaderboard(){
-  const res = await fetch('/leaderboard');
-  const list = await res.json();
-  const lb = document.getElementById('leaderboard');
-  lb.innerHTML = '';
-  list.forEach(p => lb.innerHTML += `<li>${p.name}: ${p.diamonds} 💎 | ${p.ffDiamonds} FF💎</li>`);
+async function collect(){
+  const res = await fetch('/collect', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name: currentPlayer})
+  });
+  const data = await res.json();
+  if(data.error) alert(data.error);
+  else updatePlayer(data);
+  loadLeaderboard();
 }
 
-function openAdmin(){
-  window.location.href = 'admin.html';
+async function exchange(){
+  const amount = Number(document.getElementById('exchangeAmount').value);
+  if(!amount || amount <= 0) return alert('Введите корректное число');
+  const res = await fetch('/login', { // Получаем актуальные данные
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name: currentPlayer})
+  });
+  const player = await res.json();
+  const cost = amount*1500;
+  if(player.diamonds < cost) return alert('Недостаточно алмазов');
+  
+  const modify = await fetch('/admin/modify', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name: currentPlayer, diamonds:-cost, ffDiamonds:amount, message:`Вы обменяли ${cost} 💎 на ${amount} FF💎`})
+  });
+  const updated = await modify.json();
+  updatePlayer(updated);
+  document.getElementById('exchangeResult').innerText = `Вы успешно обменяли ${cost} 💎 на ${amount} FF💎`;
+  loadMessages();
+  loadLeaderboard();
+}
+
+async function loadLeaderboard(){
+  const res = await fetch('/leaderboard');
+  const data = await res.json();
+  const tbody = document.getElementById('leaderboard');
+  tbody.innerHTML = '';
+  data.forEach(p=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.name}</td><td>${p.diamonds}</td><td>${p.ffDiamonds}</td><td>${p.level}</td>`;
+    tbody.appendChild(tr);
+  });
 }
 
 async function loadMessages(){
-  const res = await fetch(`/messages/${currentPlayer}`);
-  const messages = await res.json();
+  const res = await fetch(`/messages?name=${currentPlayer}`);
+  const data = await res.json();
   const div = document.getElementById('messages');
-  div.innerHTML = messages.map(m=>`<p>${m.date}: ${m.text}</p>`).join('');
+  div.innerHTML = '';
+  data.forEach(m=>{
+    const el = document.createElement('div');
+    el.className='message';
+    el.innerText = m;
+    div.appendChild(el);
+  });
+}
+
+async function loadOnline(){
+  // Для примера просто показываем всех игроков
+  const res = await fetch('/leaderboard');
+  const data = await res.json();
+  const ul = document.getElementById('onlinePlayers');
+  ul.innerHTML='';
+  data.forEach(p=>{
+    const li = document.createElement('li');
+    li.innerText = p.name;
+    ul.appendChild(li);
+  });
+}
+
+function goAdmin(){
+  window.location.href = '/admin.html';
 }
 </script>
 </body>
