@@ -1,145 +1,217 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Админ-панель</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
-<style>
-  body {
-    margin:0;
-    font-family: 'Orbitron', sans-serif;
-    background: url('https://i.imgur.com/X0Q0xLJ.jpg') no-repeat center center fixed;
-    background-size: cover;
-    color: #fff;
-    text-align: center;
-  }
-  h1 {
-    font-size: 3em;
-    color: #ff0;
-    margin-top: 20px;
-  }
-  .container {
-    background: rgba(0,0,0,0.6);
-    border-radius: 15px;
-    padding: 20px;
-    width: 90%;
-    max-width: 700px;
-    margin: 20px auto;
-  }
-  input, button {
-    padding: 10px;
-    margin: 5px;
-    border-radius: 8px;
-    border: none;
-    font-size: 1em;
-  }
-  button {
-    cursor: pointer;
-    background: #0ff;
-    color:#000;
-  }
-  button:hover {
-    background: #00c;
-    color: #fff;
-  }
-  .hidden { display: none; }
-  h2 { color: #0ff; }
-</style>
+  <meta charset="UTF-8">
+  <title>Админ-панель Diamond Free Fire</title>
+  <style>
+    /* ==== Космический фон ==== */
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at top left, #0b0f2a, #1a1f44);
+      color: #fff;
+    }
+
+    h1 {
+      text-align: center;
+      color: #ffdd00;
+      text-shadow: 0 0 10px #ffdd00, 0 0 20px #ff9900;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(90deg, #ff0066, #ffcc00);
+      border: none;
+      color: #000;
+      font-weight: bold;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 10px #ffcc00;
+    }
+
+    button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 20px #ff00cc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffdd00;
+    }
+
+    tr:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transition: 0.3s;
+    }
+
+    .online-player {
+      color: #00ffcc;
+      font-weight: bold;
+    }
+
+    input[type="text"], input[type="number"], input[type="password"] {
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+      margin-right: 10px;
+    }
+
+    .exchange-section {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .exchange-section input {
+      width: 100px;
+    }
+
+    .header-buttons {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+  </style>
 </head>
 <body>
-<h1>Админ-панель</h1>
+  <h1>Diamond Free Fire - Админ</h1>
+  <div class="container">
 
-<div class="container" id="loginContainer">
-  <input type="password" id="adminPassword" placeholder="Пароль">
-  <button onclick="loginAdmin()">Войти</button>
-</div>
+    <div class="header-buttons">
+      <input type="password" id="adminPassword" placeholder="Пароль">
+      <button onclick="adminLogin()">Войти</button>
+    </div>
 
-<div class="container hidden" id="adminControls">
-  <h2>Управление игроками</h2>
-  <input type="text" id="targetPlayer" placeholder="Имя игрока">
-  <input type="number" id="addLevel" placeholder="Добавить уровень">
-  <button onclick="addLevel()">+ Уровень</button>
-  <br>
-  <button onclick="addDiamonds()">+ Алмазы</button>
-  <button onclick="addFFDiamonds()">+ FF Алмазы</button>
+    <div id="adminControls" style="display:none;">
+      <div>
+        <h2>Игроки:</h2>
+        <table id="playersTable">
+          <thead>
+            <tr>
+              <th>Имя</th>
+              <th>Алмазы</th>
+              <th>FF Алмазы</th>
+              <th>Уровень</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
 
-  <h2>Онлайн игроки (последние 10 мин)</h2>
-  <ul id="onlinePlayers"></ul>
-</div>
+      <div class="exchange-section">
+        <h2>Обмен алмазов на FF Алмазы (1 FF = 1500 обычных)</h2>
+        <input type="text" id="exchangeName" placeholder="Имя игрока">
+        <input type="number" id="exchangeAmount" placeholder="Сколько FF">
+        <button onclick="exchangeDiamonds()">Обменять</button>
+      </div>
+    </div>
+  </div>
 
-<script>
-let isAdmin = false;
+  <script>
+    let players = [];
 
-async function loginAdmin() {
-  const password = document.getElementById('adminPassword').value;
-  const res = await fetch('/admin/login', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ password })
-  });
-  const data = await res.json();
-  if(data.success){
-    isAdmin = true;
-    document.getElementById('loginContainer').classList.add('hidden');
-    document.getElementById('adminControls').classList.remove('hidden');
-    loadOnlinePlayers();
-  } else {
-    alert('Неверный пароль!');
-  }
-}
+    async function adminLogin() {
+      const password = document.getElementById('adminPassword').value;
+      try {
+        const res = await fetch('/admin/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+        if(data.success) {
+          document.getElementById('adminControls').style.display = 'block';
+          alert('Вы вошли в админку!');
+          loadPlayers();
+        } else {
+          alert('Неверный пароль!');
+        }
+      } catch(err) {
+        console.error(err);
+      }
+    }
 
-async function addLevel() {
-  const name = document.getElementById('targetPlayer').value;
-  const level = document.getElementById('addLevel').value || 1;
-  const res = await fetch('/admin/level', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ name, level })
-  });
-  const data = await res.json();
-  if(data.error) alert(data.error);
-  else alert(`${name} теперь уровень ${data.level}`);
-}
+    async function loadPlayers() {
+      const res = await fetch('/leaderboard');
+      players = await res.json();
+      renderPlayers();
+    }
 
-async function addDiamonds() {
-  const name = document.getElementById('targetPlayer').value;
-  const res = await fetch('/admin/diamTrill', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ name })
-  });
-  const data = await res.json();
-  if(data.error) alert(data.error);
-  else alert(`${name} получил алмазы!`);
-}
+    function renderPlayers() {
+      const tbody = document.querySelector('#playersTable tbody');
+      tbody.innerHTML = '';
+      players.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.name}</td>
+          <td>${p.diamonds}</td>
+          <td>${p.ffDiamonds}</td>
+          <td>${p.level}</td>
+          <td>
+            <button onclick="addDiamonds('${p.name}', 1000)">+1000 Алмазы</button>
+            <button onclick="addFF('${p.name}', 10)">+10 FF</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
 
-async function addFFDiamonds() {
-  const name = document.getElementById('targetPlayer').value;
-  const res = await fetch('/admin/ffTrill', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ name })
-  });
-  const data = await res.json();
-  if(data.error) alert(data.error);
-  else alert(`${name} получил FF алмазы!`);
-}
+    async function addDiamonds(name, amount) {
+      await fetch('/admin/diamTrill', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name })
+      });
+      loadPlayers();
+    }
 
-async function loadOnlinePlayers() {
-  const res = await fetch('/leaderboard');
-  const list = await res.json();
-  const ul = document.getElementById('onlinePlayers');
-  ul.innerHTML = '';
-  list.slice(0,10).forEach(p => {
-    const li = document.createElement('li');
-    li.textContent = `${p.name} - Алмазы: ${p.diamonds} | FF: ${p.ffDiamonds} | Уровень: ${p.level}`;
-    ul.appendChild(li);
-  });
-}
+    async function addFF(name, amount) {
+      await fetch('/admin/ff10', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name })
+      });
+      loadPlayers();
+    }
 
-// Автообновление онлайн игроков каждые 10 секунд
-setInterval(() => { if(isAdmin) loadOnlinePlayers(); }, 10000);
-</script>
+    async function exchangeDiamonds() {
+      const name = document.getElementById('exchangeName').value;
+      const amount = Number(document.getElementById('exchangeAmount').value);
+      const res = await fetch('/exchange', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name, amount })
+      });
+      const data = await res.json();
+      if(data.success) {
+        alert(`Успешно! Теперь у ${name}: ${data.diamonds} Алмазов, ${data.ffDiamonds} FF Алмазов`);
+        loadPlayers();
+      } else {
+        alert(data.error);
+      }
+    }
+  </script>
 </body>
 </html>
