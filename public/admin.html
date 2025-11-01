@@ -1,217 +1,86 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Админ-панель Diamond Free Fire</title>
-  <style>
-    /* ==== Космический фон ==== */
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: radial-gradient(circle at top left, #0b0f2a, #1a1f44);
-      color: #fff;
-    }
-
-    h1 {
-      text-align: center;
-      color: #ffdd00;
-      text-shadow: 0 0 10px #ffdd00, 0 0 20px #ff9900;
-    }
-
-    .container {
-      max-width: 1000px;
-      margin: auto;
-      padding: 20px;
-    }
-
-    button {
-      cursor: pointer;
-      background: linear-gradient(90deg, #ff0066, #ffcc00);
-      border: none;
-      color: #000;
-      font-weight: bold;
-      padding: 10px 20px;
-      margin: 5px;
-      border-radius: 12px;
-      transition: all 0.3s ease;
-      box-shadow: 0 0 10px #ffcc00;
-    }
-
-    button:hover {
-      transform: scale(1.1);
-      box-shadow: 0 0 20px #ff00cc;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-
-    th, td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid rgba(255,255,255,0.2);
-    }
-
-    th {
-      background: rgba(255, 255, 255, 0.1);
-      color: #ffdd00;
-    }
-
-    tr:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transition: 0.3s;
-    }
-
-    .online-player {
-      color: #00ffcc;
-      font-weight: bold;
-    }
-
-    input[type="text"], input[type="number"], input[type="password"] {
-      padding: 8px;
-      border-radius: 8px;
-      border: none;
-      margin-right: 10px;
-    }
-
-    .exchange-section {
-      margin-top: 20px;
-      text-align: center;
-    }
-
-    .exchange-section input {
-      width: 100px;
-    }
-
-    .header-buttons {
-      text-align: center;
-      margin-bottom: 15px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Админка Diamond Free Fire</title>
+<style>
+body {
+  font-family: 'Arial', sans-serif;
+  background: url('https://i.ibb.co/6mQ9T8S/cosmos.jpg') no-repeat center center fixed;
+  background-size: cover;
+  color: #fff;
+  text-align: center;
+}
+input, textarea {
+  padding: 5px;
+  margin: 5px;
+  border-radius: 5px;
+  border: none;
+}
+button {
+  padding: 10px 20px;
+  margin: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  background: #ff0;
+  color: #000;
+}
+</style>
 </head>
 <body>
-  <h1>Diamond Free Fire - Админ</h1>
-  <div class="container">
+<h1>Админка Diamond Free Fire</h1>
+<div>
+  <input type="password" id="adminPass" placeholder="Введите пароль">
+  <button onclick="loginAdmin()">Войти</button>
+</div>
 
-    <div class="header-buttons">
-      <input type="password" id="adminPassword" placeholder="Пароль">
-      <button onclick="adminLogin()">Войти</button>
-    </div>
+<div id="adminPanel" style="display:none;">
+  <input type="text" id="targetName" placeholder="Имя игрока">
+  <input type="number" id="giveDiamonds" placeholder="Алмазы">
+  <input type="number" id="giveFFD" placeholder="FF Алмазы">
+  <textarea id="message" placeholder="Сообщение"></textarea>
+  <button onclick="modifyPlayer()">Применить</button>
+  <h3>Онлайн игроки</h3>
+  <ul id="playersList"></ul>
+</div>
 
-    <div id="adminControls" style="display:none;">
-      <div>
-        <h2>Игроки:</h2>
-        <table id="playersTable">
-          <thead>
-            <tr>
-              <th>Имя</th>
-              <th>Алмазы</th>
-              <th>FF Алмазы</th>
-              <th>Уровень</th>
-              <th>Действия</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+<script>
+async function loginAdmin(){
+  const pass = document.getElementById('adminPass').value;
+  const res = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password: pass}) });
+  const data = await res.json();
+  if(data.success){
+    document.getElementById('adminPanel').style.display='block';
+    loadPlayers();
+  } else {
+    alert(data.error);
+  }
+}
 
-      <div class="exchange-section">
-        <h2>Обмен алмазов на FF Алмазы (1 FF = 1500 обычных)</h2>
-        <input type="text" id="exchangeName" placeholder="Имя игрока">
-        <input type="number" id="exchangeAmount" placeholder="Сколько FF">
-        <button onclick="exchangeDiamonds()">Обменять</button>
-      </div>
-    </div>
-  </div>
+async function loadPlayers(){
+  const res = await fetch('/leaderboard');
+  const list = await res.json();
+  const ul = document.getElementById('playersList');
+  ul.innerHTML='';
+  list.forEach(p => ul.innerHTML += `<li>${p.name}: ${p.diamonds} 💎 | ${p.ffDiamonds} FF💎</li>`);
+}
 
-  <script>
-    let players = [];
+async function modifyPlayer(){
+  const name = document.getElementById('targetName').value;
+  const diamonds = Number(document.getElementById('giveDiamonds').value);
+  const ffDiamonds = Number(document.getElementById('giveFFD').value);
+  const message = document.getElementById('message').value;
 
-    async function adminLogin() {
-      const password = document.getElementById('adminPassword').value;
-      try {
-        const res = await fetch('/admin/login', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ password })
-        });
-        const data = await res.json();
-        if(data.success) {
-          document.getElementById('adminControls').style.display = 'block';
-          alert('Вы вошли в админку!');
-          loadPlayers();
-        } else {
-          alert('Неверный пароль!');
-        }
-      } catch(err) {
-        console.error(err);
-      }
-    }
-
-    async function loadPlayers() {
-      const res = await fetch('/leaderboard');
-      players = await res.json();
-      renderPlayers();
-    }
-
-    function renderPlayers() {
-      const tbody = document.querySelector('#playersTable tbody');
-      tbody.innerHTML = '';
-      players.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${p.name}</td>
-          <td>${p.diamonds}</td>
-          <td>${p.ffDiamonds}</td>
-          <td>${p.level}</td>
-          <td>
-            <button onclick="addDiamonds('${p.name}', 1000)">+1000 Алмазы</button>
-            <button onclick="addFF('${p.name}', 10)">+10 FF</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    async function addDiamonds(name, amount) {
-      await fetch('/admin/diamTrill', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ name })
-      });
-      loadPlayers();
-    }
-
-    async function addFF(name, amount) {
-      await fetch('/admin/ff10', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ name })
-      });
-      loadPlayers();
-    }
-
-    async function exchangeDiamonds() {
-      const name = document.getElementById('exchangeName').value;
-      const amount = Number(document.getElementById('exchangeAmount').value);
-      const res = await fetch('/exchange', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ name, amount })
-      });
-      const data = await res.json();
-      if(data.success) {
-        alert(`Успешно! Теперь у ${name}: ${data.diamonds} Алмазов, ${data.ffDiamonds} FF Алмазов`);
-        loadPlayers();
-      } else {
-        alert(data.error);
-      }
-    }
-  </script>
+  const res = await fetch('/admin/modify', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, diamonds, ffDiamonds, message}) });
+  const data = await res.json();
+  if(data.error) alert(data.error);
+  else {
+    alert(`Изменено для ${data.name}`);
+    loadPlayers();
+  }
+}
+</script>
 </body>
 </html>
