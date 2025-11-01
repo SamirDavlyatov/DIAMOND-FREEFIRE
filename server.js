@@ -25,11 +25,7 @@ function savePlayers() {
   fs.writeJsonSync(PLAYERS_FILE, players, { spaces: 2 });
 }
 
-// ====== Онлайн админы ======
-let onlineAdmins = new Set();
-
-// ====== Маршруты ======
-
+// ====== Игроки ======
 // Вход игрока
 app.post('/login', (req, res) => {
   const { name } = req.body;
@@ -37,12 +33,10 @@ app.post('/login', (req, res) => {
 
   let player = players.find(p => p.name === name);
   if (!player) {
-    player = { name, diamonds: 0, ffDiamonds: 0, level: 1, dailyCollected: 0, lastDate: new Date().toDateString(), online: true };
+    player = { name, diamonds: 0, ffDiamonds: 0, level: 1, dailyCollected: 0, lastDate: new Date().toDateString() };
     players.push(player);
-  } else {
-    player.online = true;
+    savePlayers();
   }
-  savePlayers();
   res.json(player);
 });
 
@@ -77,24 +71,11 @@ app.get('/leaderboard', (req, res) => {
 
 // ====== Админ-панель ======
 app.post('/admin/login', (req, res) => {
-  const { password, name } = req.body;
+  const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Неверный пароль!' });
-
-  onlineAdmins.add(name);
-  res.json({ success: true, onlineAdmins: Array.from(onlineAdmins) });
-});
-
-app.post('/admin/logout', (req, res) => {
-  const { name } = req.body;
-  onlineAdmins.delete(name);
   res.json({ success: true });
 });
 
-app.get('/admin/online', (req, res) => {
-  res.json({ onlineAdmins: Array.from(onlineAdmins) });
-});
-
-// Управление игроками
 app.post('/admin/level', (req, res) => {
   const { name, level } = req.body;
   const player = players.find(p => p.name === name);
@@ -129,11 +110,6 @@ app.post('/admin/diamTrill', (req, res) => {
   player.diamonds += 1_000_000_000;
   savePlayers();
   res.json(player);
-});
-
-// Онлайн-статистика игроков
-app.get('/players/online', (req, res) => {
-  res.json(players.filter(p => p.online));
 });
 
 // ====== Запуск сервера ======
