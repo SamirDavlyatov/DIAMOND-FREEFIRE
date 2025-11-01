@@ -1,92 +1,93 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const fs = require('fs');
-const path = require('path');
+const bodyParser = require('body-parser');
 const cors = require('cors');
+const path = require('path');
+
 const app = express();
-
-const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Samu12321';
-const PLAYERS_FILE = path.join(__dirname, 'players.json');
-
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(__dirname));
+app.use(express.static('public')); // для index.html, admin.html и т.д.
 
-// ====== Загрузка игроков ======
-function loadPlayers() {
-  if (!fs.existsSync(PLAYERS_FILE)) fs.writeFileSync(PLAYERS_FILE, '[]');
-  return JSON.parse(fs.readFileSync(PLAYERS_FILE));
+const PORT = process.env.PORT || 3000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Samu12321";
+
+// ====== Игроки ======
+let players = {};
+const PLAYERS_FILE = path.join(__dirname, 'players.json');
+
+// Загружаем прогресс из файла
+if (fs.existsSync(PLAYERS_FILE)) {
+    const data = fs.readFileSync(PLAYERS_FILE, 'utf-8');
+    players = JSON.parse(data);
 }
 
-// ====== Сохранение игроков ======
-function savePlayers(players) {
-  fs.writeFileSync(PLAYERS_FILE, JSON.stringify(players, null, 2));
+// Сохраняем прогресс в файл
+function savePlayers() {
+    fs.writeFileSync(PLAYERS_FILE, JSON.stringify(players, null, 2));
 }
 
-// ====== /login ======
+// ====== Роуты ======
+
+// Вход игрока
 app.post('/login', (req, res) => {
-  const { name } = req.body;
-  if (!name) return res.status(400).json({ error: 'Введите имя!' });
-
-  const players = loadPlayers();
-  let player = players.find(p => p.name === name);
-  if (!player) {
-    player = { name, diamonds: "0", ffDiamonds: "0", level: 1 };
-    players.push(player);
-    savePlayers(players);
-  }
-  res.json(player);
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: "Введите имя" });
+    if (!players[name]) {
+        players[name] = { diamonds: 0n, ffDiamonds: 0n, level: 1 };
+        savePlayers();
+    }
+    res.json({ success: true, player: players[name] });
 });
 
-// ====== /collect ======
+// Сбор ресурсов
 app.post('/collect', (req, res) => {
-  const { name } = req.body;
-  if (!name) return res.status(400).json({ error: 'Введите имя!' });
+    const { name } = req.body;
+    if (!name || !players[name]) return res.status(400).json({ error: "Игрок не найден" });
 
-  const players = loadPlayers();
-  const player = players.find(p => p.name === name);
-  if (!player) return res.status(404).json({ error: 'Игрок не найден' });
-
-  const gained = BigInt(Math.floor(Math.random() * 5) + 1);
-  player.diamonds = (BigInt(player.diamonds) || 0n) + gained;
-  player.diamonds = player.diamonds.toString();
-  savePlayers(players);
-  res.json({ diamonds: player.diamonds, gained: gained.toString() });
+    const gain = BigInt(Math.floor(Math.random()*5) + 1);
+    players[name].diamonds += gain;
+    players[name].level += 1;
+    savePlayers();
+    res.json({ success: true, gain: gain.toString(), player: players[name] });
 });
 
-// ====== /leaderboard ======
+// Лидеры
 app.get('/leaderboard', (req, res) => {
-  const players = loadPlayers();
-  res.json(players);
+    const leaderboard = Object.entries(players)
+        .map(([name, data]) => ({ name, diamonds: data.diamonds.toString(), ffDiamonds: data.ffDiamonds.toString(), level: data.level }))
+        .sort((a,b) => b.diamonds - a.diamonds);
+    res.json(leaderboard);
 });
 
 // ====== Админка ======
-function adminAction(req, res, callback) {
-  const { password, name } = req.body;
-  if (password !== ADMIN_PASSWORD) return res.json({ error: 'Неверный пароль!' });
+app.post('/admin', (req, res) => {
+    const { password, action, playerName } = req.body;
+    if (password !== ADMIN_PASSWORD) return res.status(403).json({ error: "Неверный пароль" });
 
-  const players = loadPlayers();
-  const player = players.find(p => p.name === name);
-  if (!player) return res.json({ error: 'Игрок не найден' });
+    if (!players[playerName]) return res.status(400).json({ error: "Игрок не найден" });
 
-  callback(player);
-  savePlayers(players);
-  res.json(player);
-}
-
-app.post('/admin/level', (req, res) =>
-  adminAction(req, res, player => player.level += Number(req.body.level || 1000))
-);
-app.post('/admin/ff10', (req, res) =>
-  adminAction(req, res, player => player.ffDiamonds = (BigInt(player.ffDiamonds) || 0n) + 10n + "")
-);
-app.post('/admin/ffTrill', (req, res) =>
-  adminAction(req, res, player => player.ffDiamonds = (BigInt(player.ffDiamonds) || 0n) + 1000000000000n + "")
-);
-app.post('/admin/diamTrill', (req, res) =>
-  adminAction(req, res, player => player.diamonds = (BigInt(player.diamonds) || 0n) + 1000000000000n + "")
-);
+    switch(action){
+        case 'level':
+            players[playerName].level += 1000;
+            break;
+        case 'ff10':
+            players[playerName].ffDiamonds += 10n;
+            break;
+        case 'ffTrill':
+            players[playerName].ffDiamonds += 1000000000000n;
+            break;
+        case 'diamTrill':
+            players[playerName].diamonds += 1000000000000n;
+            break;
+        default:
+            return res.status(400).json({ error: "Неизвестное действие" });
+    }
+    savePlayers();
+    res.json({ success: true, player: players[playerName] });
+});
 
 // ====== Запуск сервера ======
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
