@@ -25,22 +25,29 @@ function savePlayers() {
   fs.writeJsonSync(PLAYERS_FILE, players, { spaces: 2 });
 }
 
-// ====== Маршруты ======
-// Вход игрока
+// ====== Вход игрока ======
 app.post('/login', (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Введите имя!' });
 
   let player = players.find(p => p.name === name);
   if (!player) {
-    player = { name, diamonds: 0, ffDiamonds: 0, level: 1, dailyCollected: 0, lastDate: new Date().toDateString() };
+    player = { 
+      name, 
+      diamonds: 0, 
+      ffDiamonds: 0, 
+      level: 1, 
+      dailyCollected: 0, 
+      lastDate: new Date().toDateString(),
+      messages: []
+    };
     players.push(player);
     savePlayers();
   }
   res.json(player);
 });
 
-// Сбор ресурсов
+// ====== Сбор ресурсов ======
 app.post('/collect', (req, res) => {
   const { name } = req.body;
   const player = players.find(p => p.name === name);
@@ -63,10 +70,18 @@ app.post('/collect', (req, res) => {
   res.json(player);
 });
 
-// Таблица лидеров
+// ====== Таблица лидеров ======
 app.get('/leaderboard', (req, res) => {
   const sorted = [...players].sort((a, b) => b.diamonds + b.ffDiamonds - (a.diamonds + a.ffDiamonds));
   res.json(sorted);
+});
+
+// ====== Почта для игроков ======
+app.get('/messages/:name', (req, res) => {
+  const { name } = req.params;
+  const player = players.find(p => p.name === name);
+  if (!player) return res.status(404).json({ error: 'Игрок не найден' });
+  res.json(player.messages || []);
 });
 
 // ====== Админ-панель ======
@@ -76,64 +91,21 @@ app.post('/admin/login', (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/admin/level', (req, res) => {
-  const { name, level } = req.body;
-  const player = players.find(p => p.name === name);
-  if (!player) return res.status(404).json({ error: 'Игрок не найден' });
-  player.level += Number(level || 1);
-  savePlayers();
-  res.json(player);
-});
-
-app.post('/admin/ff10', (req, res) => {
-  const { name } = req.body;
-  const player = players.find(p => p.name === name);
-  if (!player) return res.status(404).json({ error: 'Игрок не найден' });
-  player.ffDiamonds += 10;
-  savePlayers();
-  res.json(player);
-});
-
-app.post('/admin/ffTrill', (req, res) => {
-  const { name } = req.body;
-  const player = players.find(p => p.name === name);
-  if (!player) return res.status(404).json({ error: 'Игрок не найден' });
-  player.ffDiamonds += 1_000_000_000;
-  savePlayers();
-  res.json(player);
-});
-
-app.post('/admin/diamTrill', (req, res) => {
-  const { name } = req.body;
-  const player = players.find(p => p.name === name);
-  if (!player) return res.status(404).json({ error: 'Игрок не найден' });
-  player.diamonds += 1_000_000_000;
-  savePlayers();
-  res.json(player);
-});
-
-// ====== Обмен алмазов на FF алмазы ======
-app.post('/exchange', (req, res) => {
-  const { name, amount } = req.body; // amount — сколько FF алмазов хочет получить
+// ====== Админ: изменить баланс и отправить письмо ======
+app.post('/admin/modify', (req, res) => {
+  const { name, diamonds = 0, ffDiamonds = 0, message = '' } = req.body;
   const player = players.find(p => p.name === name);
   if (!player) return res.status(404).json({ error: 'Игрок не найден' });
 
-  const costPerFF = 1500; // 1 FF алмаз = 1500 обычных
-  const totalCost = amount * costPerFF;
+  player.diamonds += Number(diamonds);
+  player.ffDiamonds += Number(ffDiamonds);
 
-  if (player.diamonds < totalCost) {
-    return res.status(400).json({ error: 'Недостаточно обычных алмазов!' });
+  if (message) {
+    player.messages.push({ text: message, date: new Date().toLocaleString() });
   }
 
-  player.diamonds -= totalCost;
-  player.ffDiamonds += amount;
-
   savePlayers();
-  res.json({
-    success: true,
-    diamonds: player.diamonds,
-    ffDiamonds: player.ffDiamonds
-  });
+  res.json(player);
 });
 
 // ====== Запуск сервера ======
