@@ -1,110 +1,87 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Diamond FreeFire</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<title>Diamond Free Fire</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
 <style>
-  /* ===== Общие стили ===== */
-  * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
+    margin: 0;
     font-family: 'Orbitron', sans-serif;
-    height: 100vh;
-    background: radial-gradient(circle at top, #0b0c1f, #000000 80%);
-    color: #00fff7;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-  }
-  /* ===== Анимация звезд ===== */
-  body::before {
-    content: '';
-    position: absolute;
-    width: 200%;
-    height: 200%;
-    background: transparent url('https://i.imgur.com/0Xj1QZp.png') repeat;
+    background: url('https://i.imgur.com/X0Q0xLJ.jpg') no-repeat center center fixed;
     background-size: cover;
-    animation: starMove 200s linear infinite;
-    z-index: -1;
-  }
-  @keyframes starMove {
-    from { transform: translate(0,0); }
-    to { transform: translate(-500px, -500px); }
-  }
-  /* ===== Контейнер ===== */
-  .container {
+    color: #fff;
     text-align: center;
-    padding: 40px;
-    background: rgba(10, 10, 30, 0.7);
-    border-radius: 15px;
-    box-shadow: 0 0 30px #00fff7;
   }
-  h1 {
-    font-size: 3em;
-    color: #00fff7;
-    text-shadow: 0 0 20px #00fff7, 0 0 40px #00fff7;
-    margin-bottom: 20px;
-  }
-  button {
-    padding: 15px 30px;
-    margin: 10px;
-    font-size: 1.2em;
-    font-weight: bold;
-    color: #000;
-    background: linear-gradient(90deg, #00fff7, #0040ff);
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: 0.3s;
-    box-shadow: 0 0 15px #00fff7, 0 0 30px #0040ff;
-  }
-  button:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 25px #00fff7, 0 0 50px #0040ff;
-  }
-  /* ===== Кнопка админки ===== */
-  .admin-btn {
-    background: linear-gradient(90deg, #ff00ff, #ff0080);
-    box-shadow: 0 0 15px #ff00ff, 0 0 30px #ff0080;
-  }
-  .admin-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 25px #ff00ff, 0 0 50px #ff0080;
-  }
+  h1 { font-size: 3em; margin-top: 20px; color: #00ffff; }
+  .stats, .actions, .leaderboard { margin: 20px auto; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 15px; width: 90%; max-width: 600px; }
+  button { background: #0ff; border: none; padding: 10px 20px; font-size: 1em; margin: 10px; border-radius: 10px; cursor: pointer; }
+  button:hover { background: #00c; color: #fff; }
+  #adminBtn { background: #ff0; color: #000; }
+  input { padding: 8px; border-radius: 8px; border: none; margin: 5px; width: 200px; text-align: center; }
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>Diamond FreeFire</h1>
-  <button onclick="collectDiamonds()">Collect Diamonds</button>
-  <button class="admin-btn" onclick="goAdmin()">Admin Panel</button>
-  <p id="message"></p>
+<h1>Diamond Free Fire</h1>
+
+<div class="stats">
+  <div>Имя: <span id="playerName"></span></div>
+  <div>Алмазы: <span id="diamonds">0</span></div>
+  <div>FF Алмазы: <span id="ffDiamonds">0</span></div>
+  <div>Уровень: <span id="level">1</span></div>
+</div>
+
+<div class="actions">
+  <button onclick="collectDiamonds()">Собрать ресурсы</button>
+  <button id="adminBtn" onclick="openAdmin()">Админ панель</button>
+</div>
+
+<div class="leaderboard">
+  <h2>Топ игроков</h2>
+  <ul id="leaderboard"></ul>
 </div>
 
 <script>
-function collectDiamonds() {
-  const name = prompt('Enter your player name:');
-  if(!name) return alert('Введите имя!');
-  fetch('/collect', {
-    method:'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({name})
-  }).then(res => res.json())
-    .then(data => {
-      if(data.error) {
-        document.getElementById('message').innerText = data.error;
-      } else {
-        document.getElementById('message').innerText = `Hello ${data.name}, Diamonds: ${data.diamonds}, FF Diamonds: ${data.ffDiamonds}`;
-      }
-    });
+let playerName = localStorage.getItem('playerName') || prompt("Введите имя");
+if(!playerName) playerName = "Игрок";
+localStorage.setItem('playerName', playerName);
+
+document.getElementById('playerName').innerText = playerName;
+
+async function updateStats() {
+  const res = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: playerName })});
+  const data = await res.json();
+  document.getElementById('diamonds').innerText = data.diamonds;
+  document.getElementById('ffDiamonds').innerText = data.ffDiamonds;
+  document.getElementById('level').innerText = data.level;
+  updateLeaderboard();
 }
 
-// ===== Переход в админку =====
-function goAdmin() {
+async function collectDiamonds() {
+  const res = await fetch('/collect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: playerName })});
+  const data = await res.json();
+  if(data.error) { alert(data.error); return; }
+  updateStats();
+}
+
+async function updateLeaderboard() {
+  const res = await fetch('/leaderboard');
+  const list = await res.json();
+  const ul = document.getElementById('leaderboard');
+  ul.innerHTML = '';
+  list.slice(0,10).forEach(p => {
+    const li = document.createElement('li');
+    li.textContent = `${p.name} - ${p.diamonds} + ${p.ffDiamonds}`;
+    ul.appendChild(li);
+  });
+}
+
+function openAdmin() {
   window.location.href = 'admin.html';
 }
+
+updateStats();
 </script>
 </body>
 </html>
